@@ -54,7 +54,7 @@ let findNthPrime (n: int) : int =
 let findNthPrime (n: int) : int =
     let primesSeq =
         Seq.initInfinite ((+) 2)
-        |> Seq.filter isPrimeNumber
+        |> Seq.filterMap isPrimeNumber
         |> Seq.take n        
         |> Seq.last
     
@@ -66,7 +66,7 @@ let findNthPrime (n: int) : int =
 let findNthPrime (n: int) : int =
     let primesSeq =
         Seq.initInfinite ((+) 2)
-        |> Seq.filter isPrimeNumber         
+        |> Seq.filterMap isPrimeNumber         
     primesSeq |> Seq.item (n - 1)           
 ```
 
@@ -74,7 +74,7 @@ let findNthPrime (n: int) : int =
 ```
 let findNthPrime (n: int) : int =
     Seq.initInfinite ((+) 2)
-    |> Seq.filter isPrimeNumber
+    |> Seq.filterMap isPrimeNumber
     |> Seq.map (fun x -> x)           
     |> Seq.take n
     |> Seq.last
@@ -117,7 +117,7 @@ let cycleLength (d: int) : int =
             if nextRem = 0 then
                 0
             else
-                findCycle (pos + 1) (Map.add rem pos remainders) nextRem
+                findCycle (pos + 1) (Map.insert rem pos remainders) nextRem
 
     findCycle 0 Map.empty 1
 ```
@@ -179,7 +179,7 @@ let main _ =
 Было интересно поработать с множеством разных методов решения одной и той же проблемы, а также понаблюдать за изменением времени исполнения программы. 
 
 Особенности, которые я отметила для себя:
-- В F# понравилось работать с модулем Seq, предоставляющим методы для работы с последовательностями. Хотелось бы выделить initInfinite (генерация бесконечной последовательности), а также функцию filter.
+- В F# понравилось работать с модулем Seq, предоставляющим методы для работы с последовательностями. Хотелось бы выделить initInfinite (генерация бесконечной последовательности), а также функцию filterMap.
 - Удобная работа с рекурсией (даже есть ключевое слово rec).
 - Довольно простая реализация тестирования для функций (NUnit).
 - Довольно сложная настройка и сборка у dotnet платформы. В том числе и для тестов.
