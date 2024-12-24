@@ -35,7 +35,6 @@ jobs:
         run: | 
           dotnet tool install fantomas-tool --global --version "4.*"
           fantomas src --recurse
-          fantomas tests --recurse
           
       - name: Upload formatted files
         uses: actions/upload-artifact@v3
