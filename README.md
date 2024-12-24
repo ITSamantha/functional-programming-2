@@ -1,191 +1,367 @@
-# Лабораторная работа №1
+# Лабораторная работа №2
 
 Выполнила: Савельева Диана Александровна, P34082, 388291
 
-Вариант: 7, 26
+Вариант: oa-dict 
+Интерфейс: Dict
+Структура данных: OpenAddress Hashmap
 
 ## Задание
-Цель: освоить базовые приёмы и абстракции функционального программирования: функции, поток управления и поток данных, сопоставление с образцом, рекурсия, свёртка, отображение, работа с функциями как с данными, списки.
 
-## Описание проблемы и комментарии
+Цель: освоиться с построением пользовательских типов данных, полиморфизмом, рекурсивными алгоритмами и средствами тестирования (unit testing, property-based testing), а также разделением интерфейса и особенностей реализации.
 
-### Задача №7
+### Требования
+1. Функции:
+    - добавление и удаление элементов;
+    - фильтрация;
+    - отображение (map);
+    - свертки (левая и правая);
+    - структура должна быть моноидом.
+2. Структуры данных должны быть неизменяемыми.
+3. Библиотека должна быть протестирована в рамках unit testing.
+4. Библиотека должна быть протестирована в рамках property-based тестирования (как минимум 3 свойства, включая свойства моноида).
+5. Структура должна быть полиморфной.
+6. Требуется использовать идиоматичный для технологии стиль программирования. Примечание: некоторые языки позволяют получить большую часть API через реализацию небольшого интерфейса. Так как лабораторная работа про ФП, а не про экосистему языка -- необходимо реализовать их вручную и по возможности -- обеспечить совместимость.
+7. Обратите внимание:
+    - API должно быть реализовано для заданного интерфейса и оно не должно "протекать". На уровне тестов -- в первую очередь нужно протестировать именно API (dict, set, bag).
+    - Должна быть эффективная реализация функции сравнения (не наивное приведение к спискам, их сортировка с последующим сравнением), реализованная на уровне API, а не внутреннего представления.
 
-Для данной задачи написано несколько реализаций.
-Полный код различных реализаций представлен в директории src. Ниже продемонстрированы кусочки кода, явно использующие необходимые подходы. Тесты для задач находятся в директории tests.
+## Реализация
 
-```
-By listing the first six prime numbers: 2, 3, 5, 7, 11 and 13 we can see that the 6th prime is 13.
+### Функция поиска hash для ключа
 
-What is the 10001st prime number?
-```
+Входные аргументы:
+- Вместимость (максимальный размер) структуры
+- Ключ
 
-Описана вспомогательная функция для определения, простое ли число:
-```
-let isPrimeNumber (number: int) : bool =
-    let rec check (i: int) : bool =
-        if number <= 1 then false
-        elif number = 2 then true
-        elif i * i > number then true
-        elif number % i = 0 then false
-        else check (i + 1)
-
-    check 2
-```
-
-
-#### Хвостовая рекурсия
-```
-let findNthPrime (n: int) : int =
-    let rec findPrime (count: int) (candidate: int) : int =
-        let isPrime = isPrimeNumber (candidate)
-        let nextCount = count + boolToInt isPrime
-
-        if nextCount = n then
-            candidate
-        else
-            findPrime (nextCount) (candidate + 1)
-
-    findPrime 0 2
-```
-
-#### Фильтрация
-```
-let findNthPrime (n: int) : int =
-    let primesSeq =
-        Seq.initInfinite ((+) 2)
-        |> Seq.filterMap isPrimeNumber
-        |> Seq.take n        
-        |> Seq.last
-    
-    primesSeq
-```
-
-#### Бесконечная последовательность
-```
-let findNthPrime (n: int) : int =
-    let primesSeq =
-        Seq.initInfinite ((+) 2)
-        |> Seq.filterMap isPrimeNumber         
-    primesSeq |> Seq.item (n - 1)           
-```
-
-#### Map (для данной задачи не очень применимо)
-```
-let findNthPrime (n: int) : int =
-    Seq.initInfinite ((+) 2)
-    |> Seq.filterMap isPrimeNumber
-    |> Seq.map (fun x -> x)           
-    |> Seq.take n
-    |> Seq.last
-```
-
-### Задача №26
-
-Для данной задачи написано несколько реализаций.
-Полный код различных реализаций представлен в директории src. Ниже продемонстрированы кусочки кода, явно использующие необходимые подходы. Тесты для задач находятся в директории tests.
+Выходные аргументы:
+- hash
 
 ```
-A unit fraction contains in the numerator. The decimal representation of the unit fractions with denominators 2 to 10
-are given:
-
-1/2 = 0.5
-1/3 = 0.(3)
-1/4 = 0.25
-1/5 = 0.2
-1/6 = 0.1(6)
-1/7 = 0.(142857)
-1/8 = 0.125
-1/9 = 0.(1)
-1/10 = 0.1
-
-Where 0.1(6) means 0.166666... and has a 1-digit recurring cycle. It can be seen that 1/7 has a 6-digit recurring cycle.
-
-Find the value of d < 1000 for which 1/d contains the longest recurring cycle in its decimal fraction part.
+let calculateHash (maxSize: int) (key: 'Key) : int =
+    (hash key) % maxSize
+    |> (fun x -> if x < 0 then x + maxSize else x)
 ```
 
-Описана вспомогательная функция для определения длины "цикла":
+### Функция "Поиск ячейки"
 
 ```
-let cycleLength (d: int) : int =
-    let rec findCycle (pos: int) (remainders: Map<int, int>) (rem: int) : int =
-        match Map.tryFind rem remainders with
-        | Some (start) -> pos - start
-        | None ->
-            let nextRem = (rem * 10) % d
-
-            if nextRem = 0 then
-                0
-            else
-                findCycle (pos + 1) (Map.insert rem pos remainders) nextRem
-
-    findCycle 0 Map.empty 1
-```
-
-#### Хвостовая рекурсия
-```
-let rec findMaxCycleTailRec (n: int) (d: int) (maxD: int) (maxLen: int) : int =
-    if d >= n then
-        maxD
+let rec findCell
+    (key: 'Key)
+    (maxSize: int)
+    (storage: ('Key * 'Value) option array)
+    (currentIndex: int)
+    (probeAmount: int)
+    : int option =
+    if probeAmount >= maxSize then
+        None
     else
-        let len = cycleLength d
-
-        let newMaxD, newMaxLen =
-            if len > maxLen then
-                d, len
-            else
-                maxD, maxLen
-
-        findMaxCycleTailRec n (d + 1) newMaxD newMaxLen
+        match storage.[currentIndex] with
+        | Some (k, _) when k = key -> Some currentIndex
+        | None -> Some currentIndex
+        | _ -> findCell key maxSize storage ((currentIndex + 1) % maxSize) (probeAmount + 1)
 ```
 
-#### Фильтрация
+### Функция "Добавление элемента"
+
 ```
-let findMaxCycleRec (candidates: List<int>) : int =
-    candidates |> List.maxBy cycleLength
+let rec insert (key: 'Key) (value: 'Value) (map: OpenAddressHashMap<'Key, 'Value>) : OpenAddressHashMap<'Key, 'Value> =
+    if float map.Size / float map.MaxSize = 1 then
+        let newMaxSize = map.MaxSize * 2
+        let newStorage = Array.create newMaxSize None
+
+        let newMap =
+            { MaxSize = newMaxSize
+              Storage = newStorage
+              Size = map.Size }
+
+        insert key value newMap
+    else
+        match findCell key map.MaxSize map.Storage (calculateHash map.MaxSize key) 0 with
+        | Some currentIndex ->
+            let newStorage = Array.copy map.Storage
+            newStorage.[currentIndex] <- Some(key, value)
+
+            { map with
+                Storage = newStorage
+                Size = map.Size + 1 }
+        | None -> map
+```
+
+### Функция "Удаление элемента"
+
+```
+let delete (key: 'Key) (map: OpenAddressHashMap<'Key, 'Value>) : OpenAddressHashMap<'Key, 'Value> =
+    match findCell key map.MaxSize map.Storage (calculateHash map.MaxSize key) 0 with
+    | Some currentIndex ->
+        let newStorage = Array.copy map.Storage
+        newStorage.[currentIndex] <- None
+
+        { map with
+            Storage = newStorage
+            Size = map.Size - 1 }
+    | None -> map
+```
+
+### Функция "Фильтрация"
+
+```
+let filterMap
+    (condition: ('Key * 'Value) -> bool)
+    (map: OpenAddressHashMap<'Key, 'Value>)
+    : OpenAddressHashMap<'Key, 'Value> =
+    let filteredItems =
+        Array.fold
+            (fun accumulator element ->
+                match element with
+                | Some (k, v) when condition (k, v) -> (k, v) :: accumulator
+                | _ -> accumulator)
+            []
+            map.Storage
+
+    let newHashMap =
+        { MaxSize = map.MaxSize
+          Storage = Array.create map.MaxSize None
+          Size = 0 }
+
+    List.fold (fun accumulator (k, v) -> insert k v accumulator) newHashMap filteredItems
+
+```
+
+### Функция "Свертка (левая)"
+
+```
+let foldLeft
+    (aggregator: 'State -> ('Key * 'Value) -> 'State)
+    (state: 'State)
+    (map: OpenAddressHashMap<'Key, 'Value>)
+    : 'State =
+    Array.fold
+        (fun accumulator element ->
+            match element with
+            | Some (k, v) -> aggregator accumulator (k, v)
+            | None -> accumulator)
+        state
+        map.Storage
+```
+
+### Функция "Свертка (правая)"
+
+```
+let foldRight
+    (aggregator: ('Key * 'Value) -> 'State -> 'State)
+    (state: 'State)
+    (map: OpenAddressHashMap<'Key, 'Value>)
+    : 'State =
+    Array.foldBack
+        (fun element accumulator ->
+            match element with
+            | Some (k, v) -> aggregator (k, v) accumulator
+            | None -> accumulator)
+        map.Storage
+        state
+```
+
+### Функция "Отображение"
+
+```
+let map
+    (mapper: ('Key * 'Value) -> ('Key * 'Value))
+    (map: OpenAddressHashMap<'Key, 'Value>)
+    : OpenAddressHashMap<'Key, 'Value> =
+    let newStorage = Array.create map.MaxSize None
+
+    let updatedStorage =
+        Array.fold
+            (fun (storage: ('Key * 'Value) option array) element ->
+                match element with
+                | Some (k, v) ->
+                    let (newKey, newValue) = mapper (k, v)
+
+                    match findCell newKey map.MaxSize storage (calculateHash map.MaxSize newKey) 0 with
+                    | Some currentIndex ->
+                        storage.[currentIndex] <- Some(newKey, newValue)
+                        storage
+                    | None -> storage
+                | None -> storage)
+            newStorage
+            map.Storage
+
+    { map with Storage = updatedStorage }
+```
+
+
+### Структура должна быть моноидом
+
+1. Нейтральный элемент
+
+Создание пустой структуры.
+
+```
+let createEmptyHashMap (maxSize: int) : OpenAddressHashMap<'Key, 'Value> =
+    { MaxSize = maxSize
+      Storage = Array.create maxSize None
+      Size = 0 }
+```
+
+
+2. Бинарная операция
+
+В качестве бинарной операции используем слияние. В программе функция слияния определена как combine. Она представлена ниже.
+
+```
+let combine
+    (firstHashMap: OpenAddressHashMap<'Key, 'Value>)
+    (secondHashMap: OpenAddressHashMap<'Key, 'Value>)
+    : OpenAddressHashMap<'Key, 'Value> =
+    let newMaxSize = max firstHashMap.MaxSize secondHashMap.MaxSize
+    let newStorage = Array.create newMaxSize None
+
+    let insertAll (storage: ('Key * 'Value) option array) (map: OpenAddressHashMap<'Key, 'Value>) =
+        Array.fold
+            (fun updatedStorage element ->
+                match element with
+                | Some (k, v) ->
+                    match findCell k newMaxSize updatedStorage (calculateHash newMaxSize k) 0 with
+                    | Some currentIndex ->
+                        updatedStorage.[currentIndex] <- Some(k, v)
+                        updatedStorage
+                    | None -> updatedStorage
+                | None -> updatedStorage)
+            storage
+            map.Storage
+
+    let combinedStorage = insertAll (insertAll newStorage firstHashMap) secondHashMap
+
+    { MaxSize = newMaxSize
+      Storage = combinedStorage
+      Size = firstHashMap.Size + secondHashMap.Size }
+
+```
+
+## Демонстрационная программа
+
+```
+open System
+open OpenAddressHashMap
 
 [<EntryPoint>]
-let main (_: string[]) : int =
-    let candidates = [ 1..999 ]
-    let result = findMaxCycleRec candidates
-    printfn "%d" result
+let main argv =
+    let testHashMap = createEmptyHashMap 5
+
+    let testHashMap = insert 5 "five" testHashMap
+    let testHashMap = insert 2 "two" testHashMap
+    let testHashMap = insert 3 "three" testHashMap
+
+    match collectValue 5 testHashMap with
+    | Some value -> printfn "Key 5: %s" value
+    | None -> printfn "Key 5 not found"
+
+    match collectValue 2 testHashMap with
+    | Some value -> printfn "Key 2: %s" value
+    | None -> printfn "Key 2 not found"
+
+    match collectValue 67 testHashMap with
+    | Some value -> printfn "Key 67: %s" value
+    | None -> printfn "Key 67 not found"
+
+    let testHashMap = delete 2 testHashMap
+
+    match collectValue 2 testHashMap with
+    | Some value -> printfn "Key 2: %s" value
+    | None -> printfn "Key 2 not found (as expected after removal)"
+
+    let testHashMap2 = createEmptyHashMap 5
+    let testHashMap2 = insert 3 "three" testHashMap2
+    let testHashMap2 = insert 4 "four" testHashMap2
+
+    let mergedHashMap = combine testHashMap testHashMap2
+
+
+    printfn "Merged dictionary contents:"
+
+    let targetList = [ 5; 2; 3; 4 ]
+
+    for k in targetList do
+        match collectValue k mergedHashMap with
+        | Some value -> printfn "Key %d" k
+        | None -> ()
+
+    let filteredHashMap = filterMap (fun (k, _) -> k % 2 = 0) testHashMap2
+
+    printfn "Filtered dictionary (only even keys):"
+
+    for k in targetList do
+        match collectValue k filteredHashMap with
+        | Some value -> printfn "Key %d: %s" k value
+        | None -> ()
+
+    let mappedHashMap = map (fun (k, (v: string)) -> (k, v.ToLower())) testHashMap2
+
+    printfn "Mapped dictionary (values in lowercase):"
+
+    for k in targetList do
+        match collectValue k mappedHashMap with
+        | Some value -> printfn "Key %d: %s" k value
+        | None -> ()
+
+    let keySum = foldLeft (fun accumulator (k, _) -> accumulator + k) 0 testHashMap2
+    printfn "Sum of keys in merged dictionary: %d" keySum
+
+    let concatenatedValues = foldRight (fun (k, v) accumulator -> accumulator + " " + v) "" mergedHashMap
+    printfn "Concatenated values in merged dictionary: %s" (concatenatedValues.Trim())
+
+    let largeMap = createEmptyHashMap 2
+    let largeMap = insert 1 "one" largeMap
+    let largeMap = insert 2 "two" largeMap
+    let largeMap = insert 3 "three" largeMap
+    printfn "\nHashMap Resize on Overflow"
+    match collectValue 1 largeMap with
+    | Some value -> printfn "Key 1: %s" value
+    | None -> printfn "Key 1 not found"
+
+    let mixedMap = createEmptyHashMap 5
+    let mixedMap = insert "first" 1 mixedMap
+    let mixedMap = insert "second" 2 mixedMap
+    let mixedMap = insert "third" 3 mixedMap
+
+    let targerList2 = ["first"; "second"; "third"]
+
+    printfn "\nHashMap with String Keys"
+    for key in targerList2  do
+        match collectValue key mixedMap with
+        | Some value -> printfn "Key %s: %d" key value
+        | None -> printfn "Key %s not found" key
+
     0
 ```
 
-#### Бесконечная последовательность
-```
-let recCycleSeq = Seq.initInfinite ((+) 1)
+## Тестирование
 
-    let result =
-        recCycleSeq
-        |> Seq.take 999
-        |> Seq.maxBy cycleLength
-```
+Всего было разработано 12 тестов:
+- 8 unit-тестов:
+- 4 property-теста:
+    - Merging with an empty map returns the original map
+    - Insert should correctly insert values to the map
+    - Insert should work with key-value pairs of different types
+    - Merge should be associative
 
-#### Map
+Результат тестирования:
 ```
-[<EntryPoint>]
-let main _ =
-    let candidates = [1..999]
-    let cycleLengthsMap = candidates |> List.map (fun d -> (d, cycleLength d))
-    let result= cycleLengthsMap |> List.maxBy snd |> fst
-    printfn "%d" result
-    0
+Запуск выполнения тестов; подождите...
+
+Пройден!   : не пройдено     0, пройдено    12, пропущено     0, всего    12, длительность 383 ms. - tests.dll (net8.0)
 ```
 
-# Заключение
-В процессе выполнения лабораторной работы были освоены ключевые принципы функционального программирования. Удалось поработать с рекурсией, ленивыми коллекциями, а также освоить базово тестирование в F#. Эти принципы оказались очень полезными при решении задач, связанных с вычислением циклов в дробях и поиском простых чисел (соответстующее моим задачам).
+Для тестирования использовались модули: 
+- Nunit - Unit тестирование
+- FsCheck - Property-based тестирование
 
-Было интересно поработать с множеством разных методов решения одной и той же проблемы, а также понаблюдать за изменением времени исполнения программы. 
+## Заключение
+Я изучила информацию об открытой адресации, реализовала один из её вариантов — линейное пробирование (Linear Probing). Из преимуществ отметила простоту реализации. Однако, необходимо учитывать, что при данном варианте возможны длинные последовательности занятых ячеек.
 
-Особенности, которые я отметила для себя:
-- В F# понравилось работать с модулем Seq, предоставляющим методы для работы с последовательностями. Хотелось бы выделить initInfinite (генерация бесконечной последовательности), а также функцию filterMap.
-- Удобная работа с рекурсией (даже есть ключевое слово rec).
-- Довольно простая реализация тестирования для функций (NUnit).
-- Довольно сложная настройка и сборка у dotnet платформы. В том числе и для тестов.
-- Тяжело реализовывать алгоритмическую задачу по заданному "паттерну". Обычно хочется реализовать как можно более эффективно...
+Некоторые заметки о линейном пробировании, которые хотелось бы выделить:
+- Следующая позиция ищется с фиксированным шагом.
+- Если при добавлении ключа обнаруживается, что место занято, пробуем следующую ячейку.
 
-Итог:
-- Самым интересным мне показался вариант с бесконечной последовательностью и фильтрацией.
-- Самым простым - код на Python. Так как я на нём обычно пишу:)
-
+Было интересно реализовать структуру именно на языке F#, без использования ООП. Также я познакомилась с новым пакетом FsCheck, который помог добавить property-тестирование в проект.

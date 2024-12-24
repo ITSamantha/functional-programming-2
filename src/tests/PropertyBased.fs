@@ -36,7 +36,7 @@ let generateMap =
             return filledMap
         })
 
-let mapArb = Arb.fromGen generateMap
+let testMap = Arb.fromGen generateMap
 
 // Property test: Merging with an empty map returns the original map
 [<Test>]
@@ -46,7 +46,7 @@ let ``Monoid Property - Merge with Empty Map Returns Original Map``() =
         let mergedMap = combine map emptyMap
         areDictsEqual map mergedMap
 
-    Prop.forAll mapArb property
+    Prop.forAll testMap property
     |> Check.QuickThrowOnFailure
 
 // Property test: Insert should correctly insert values to the map
@@ -92,9 +92,9 @@ let ``Associative Property - Merge Should Be Associative``() =
         let mergedRight = combine map1 (combine map2 map3)
         areDictsEqual mergedLeft mergedRight
 
-    let tripleMapArb = Arb.fromGen (Gen.zip3 generateMap generateMap generateMap)
+    let testTripleMap = Arb.fromGen (Gen.zip3 generateMap generateMap generateMap)
 
-    Prop.forAll tripleMapArb property
+    Prop.forAll testTripleMap property
     |> Check.QuickThrowOnFailure
 
 // SetUp method to prepare the environment before running tests
