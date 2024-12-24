@@ -71,4 +71,4 @@ jobs:
           dotnet run --project src --configuration Release
 
       - name: Run task tests
-        run: cd tests && dotnet test
+        run: cd src/tests && dotnet test
